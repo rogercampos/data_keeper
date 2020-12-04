@@ -22,7 +22,69 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+Configure the storage to use to save the generated dumps.
+
+You can use a local storage, a simple option which stores the dumps in the same server running the code,
+in a path of your choosing (consider that it must be writable by the user running this code in production).
+You also configure how to reach that server from your local machine (currently only scp is supported), in
+order to download these dumps later. Ex:
+
+```ruby
+DataKeeper.storage = DataKeeper::LocalStorage.new(
+  local_store_dir: "/users/fredy/backups/...",
+  remote_access: {
+    type: "scp",
+    host: "141.12.241.22",
+    port: "8622",
+    user: "fredy"
+  }
+)
+```
+
+Other storages, like S3, could be implemented, but currently this gem only ships with local storage.
+If you want to do your own, you can assign as an storage whatever object that responds to:
+
+- `#save(file, filename, dump_name)`, where file is a File object and filename a string. This method should save the given
+  dump file. The given filename begins with the name of the dump.
+
+- `#retrieve(dump_name) { |file| (...) }`, which should retrieve the latest stored dump with the given dump_name.
+  It should yield the given block passing the File object pointing to the retrieved dump file.
+
+
+Then, declare some dumps to work with:
+
+```ruby
+# Dump the whole database
+DataKeeper.define_dump(:whole_database, :full)
+
+# Dump only selected tables, and a custom SQL
+DataKeeper.define_dump(:config) do |d|
+  # Specific tables, al rows
+  d.table "products"
+  d.table "traits"
+
+  # Only some rows in the "vouchers" table. MAKE SURE your sql returns only columns from the target table!
+  d.sql(:vouchers, :used_vouchers) { Voucher.joins(cart: :order).where(orders: {status: "sent"}).to_sql }
+  
+  # Possible additional code to run after applying the dump locally
+  d.on_after_load do
+    User.create! email: "test@gmail.com", password: "password"
+  end
+end
+```
+
+Now, in production, you'll have run `DataKeeper.create_dump!("config")`, passing in the same of the dump
+you defined before. Running this will create the dump file, from the server you run this code from,
+and store it in the configured storage.
+
+If you want to have always an up-to-date dump, you'll need to call this periodically, for example once per day.
+
+Finally, to apply the dump locally, you can use the rake task:
+
+`bin/rake db:pull config`
+
+This will download the latest version available of the "config" dump, and apply it locally, destroying anything
+in your current database. It will give you an error if you try to run this in a production environment.
 
 ## Development
 
@@ -38,3 +100,5 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/[USERN
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+
+
