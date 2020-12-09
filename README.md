@@ -1,8 +1,11 @@
 # DataKeeper
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/data_keeper`. To experiment with that code, run `bin/console` for an interactive prompt.
+In a rails app using postgresql, DataKeeper is a tool to create dumps of your database in production to be used later on for local development. 
 
-TODO: Delete this and the text above, and describe your gem
+It automates the process of creating and storing them on the server, and applying them locally afterwards.
+
+It supports full dumps, as well as partial dumps per specific tables or even specific rows (you provide a sql select). 
+On partial dumps, note you'll need to manage possible issues around foreign keys and maybe other constraints. 
 
 ## Installation
 
@@ -33,10 +36,9 @@ order to download these dumps later. Ex:
 DataKeeper.storage = DataKeeper::LocalStorage.new(
   local_store_dir: "/users/fredy/backups/...",
   remote_access: {
-    type: "scp",
-    host: "141.12.241.22",
-    port: "8622",
-    user: "fredy"
+    host: "10.10.10.10",
+    port: "22",
+    user: "user"
   }
 )
 ```
@@ -45,10 +47,11 @@ Other storages, like S3, could be implemented, but currently this gem only ships
 If you want to do your own, you can assign as an storage whatever object that responds to:
 
 - `#save(file, filename, dump_name)`, where file is a File object and filename a string. This method should save the given
-  dump file. The given filename begins with the name of the dump.
+  dump file. 
 
 - `#retrieve(dump_name) { |file| (...) }`, which should retrieve the latest stored dump with the given dump_name.
-  It should yield the given block passing the File object pointing to the retrieved dump file.
+  It should yield the given block passing the File object pointing to the retrieved dump file in the local filesystem,
+  which is expected to be cleaned up on block termination.
 
 
 Then, declare some dumps to work with:
@@ -59,7 +62,7 @@ DataKeeper.define_dump(:whole_database, :full)
 
 # Dump only selected tables, and a custom SQL
 DataKeeper.define_dump(:config) do |d|
-  # Specific tables, al rows
+  # Specific tables, all rows
   d.table "products"
   d.table "traits"
 
@@ -81,10 +84,13 @@ If you want to have always an up-to-date dump, you'll need to call this periodic
 
 Finally, to apply the dump locally, you can use the rake task:
 
-`bin/rake db:pull config`
+`bin/rake data_keeper:pull[config]`
 
 This will download the latest version available of the "config" dump, and apply it locally, destroying anything
 in your current database. It will give you an error if you try to run this in a production environment.
+
+Note when using raw sql, your statement is expected to return all columns for the configured table, in the default
+order (`select *`). This uses pg's COPY from/to for the full table internally. 
 
 ## Development
 
@@ -94,7 +100,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/data_keeper.
+Bug reports and pull requests are welcome on GitHub at https://github.com/rogercampos/data_keeper.
 
 
 ## License
