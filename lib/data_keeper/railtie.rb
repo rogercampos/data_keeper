@@ -1,5 +1,3 @@
-require 'rails'
-
 module DataKeeper
   class Railtie < Rails::Railtie
     railtie_name :data_keeper

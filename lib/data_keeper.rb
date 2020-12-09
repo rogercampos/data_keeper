@@ -9,7 +9,7 @@ require 'data_keeper/dumper'
 require 'data_keeper/loader'
 require 'data_keeper/local_storage'
 require 'data_keeper/database_helper'
-require 'data_keeper/railtie'
+require 'data_keeper/railtie' if defined?(Rails) && defined?(Rails::Railtie)
 
 module DataKeeper
   DumpDoesNotExist = Class.new(Error)
@@ -23,7 +23,7 @@ module DataKeeper
   end
 
   def self.create_dump!(name)
-    raise DumpDoesNotExist unless @dumps.key?(name.to_sym)
+    raise DumpDoesNotExist unless dump?(name)
     raise NoStorageDefined if @storage.nil?
 
     Dumper.new(name, @dumps[name.to_sym]).run! do |file, filename|
@@ -31,13 +31,24 @@ module DataKeeper
     end
   end
 
-  def self.load_dump!(name)
-    raise DumpDoesNotExist unless @dumps.key?(name.to_sym)
+  def self.fetch_and_load_dump!(name)
+    raise DumpDoesNotExist unless dump?(name)
     raise NoStorageDefined if @storage.nil?
 
     @storage.retrieve(name) do |file|
       Loader.new(@dumps[name.to_sym], file).load!
     end
+  end
+
+  def self.load_dump!(name, path)
+    raise DumpDoesNotExist unless File.file?(path)
+    raise NoStorageDefined if @storage.nil?
+
+    Loader.new(@dumps[name.to_sym], File.open(path)).load!
+  end
+
+  def self.dump?(name)
+    @dumps.key?(name.to_sym)
   end
 
   def self.storage=(value)
