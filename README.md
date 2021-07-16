@@ -43,15 +43,30 @@ DataKeeper.storage = DataKeeper::LocalStorage.new(
 )
 ```
 
-Other storages, like S3, could be implemented, but currently this gem only ships with local storage.
-If you want to do your own, you can assign as an storage whatever object that responds to:
+There's also support for storing the dumps in s3, using `DataKeeper::S3Storage` like in this example:
 
-- `#save(file, filename, dump_name)`, where file is a File object and filename a string. This method should save the given
-  dump file. 
+```ruby
+DataKeeper.storage = DataKeeper::S3Storage.new(
+  bucket: 'bucket-name',
+  store_dir: 'dumps/',
+  acl: "private",
+  remote_access: {
+          access_key_id: Rails.application.credentials.access_key_id,
+          secret_access_key: Rails.application.credentials.secret_access_key,
+          region: 'eu-central-1'
+  }
+)
+```
+
+
+Other storages can be implemented. An storage can be any object that responds to those two methods:
+
+- `#save(file, filename, dump_name)`, where file is a File object and filename and dump_name are strings. 
+  This method should save the given dump file in the store. 
 
 - `#retrieve(dump_name) { |file| (...) }`, which should retrieve the latest stored dump with the given dump_name.
-  It should yield the given block passing the File object pointing to the retrieved dump file in the local filesystem,
-  which is expected to be cleaned up on block termination.
+  It should yield the given block passing the `File` or `Tempfile` object pointing to the retrieved dump 
+  file in the local filesystem, which is expected to be cleaned up on block termination.
 
 
 Then, declare some dumps to work with:

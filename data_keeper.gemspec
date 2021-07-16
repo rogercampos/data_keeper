@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
   spec.description   = %q{Easy management of database dumps for dev env}
   spec.homepage      = "https://github.com/rogercampos/data_keeper"
   spec.license       = "MIT"
-  spec.required_ruby_version = Gem::Requirement.new(">= 2.3.0")
+  spec.required_ruby_version = Gem::Requirement.new(">= 2.5.0")
 
   spec.metadata["homepage_uri"] = spec.homepage
 
@@ -27,5 +27,4 @@ Gem::Specification.new do |spec|
   spec.add_dependency "terrapin", ">= 0.5.0"
   spec.add_dependency "sshkit", ">= 1.20.0"
   spec.add_dependency "rails", ">= 5.0.0"
-
 end
