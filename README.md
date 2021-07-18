@@ -46,6 +46,9 @@ DataKeeper.storage = DataKeeper::LocalStorage.new(
 There's also support for storing the dumps in s3, using `DataKeeper::S3Storage` like in this example:
 
 ```ruby
+# Explicit require is necessary
+require 'data_keeper/s3_storage'
+
 DataKeeper.storage = DataKeeper::S3Storage.new(
   bucket: 'bucket-name',
   store_dir: 'dumps/',
