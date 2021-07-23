@@ -15,18 +15,20 @@ module DataKeeper
   DumpDoesNotExist = Class.new(Error)
   NoStorageDefined = Class.new(Error)
 
-  @dumps = {}
+  @dump_definition_builders = {}
   @storage = nil
 
   def self.define_dump(name, type = :partial, &block)
-    @dumps[name.to_sym] = DefinitionBuilder.build(type, block)
+    @dump_definition_builders[name.to_sym] = DefinitionBuilder.new(type, block)
   end
 
   def self.create_dump!(name)
     raise DumpDoesNotExist unless dump?(name)
     raise NoStorageDefined if @storage.nil?
 
-    Dumper.new(name, @dumps[name.to_sym]).run! do |file, filename|
+    definition = @dump_definition_builders[name.to_sym].evaluate!
+
+    Dumper.new(name, definition).run! do |file, filename|
       @storage.save(file, filename, name)
     end
   end
@@ -34,9 +36,10 @@ module DataKeeper
   def self.fetch_and_load_dump!(name)
     raise DumpDoesNotExist unless dump?(name)
     raise NoStorageDefined if @storage.nil?
+    definition = @dump_definition_builders[name.to_sym].evaluate!
 
     @storage.retrieve(name) do |file|
-      Loader.new(@dumps[name.to_sym], file).load!
+      Loader.new(definition, file).load!
     end
   end
 
@@ -44,11 +47,12 @@ module DataKeeper
     raise DumpDoesNotExist unless File.file?(path)
     raise NoStorageDefined if @storage.nil?
 
-    Loader.new(@dumps[name.to_sym], File.open(path)).load!
+    definition = @dump_definition_builders[name.to_sym].evaluate!
+    Loader.new(definition, File.open(path)).load!
   end
 
   def self.dump?(name)
-    @dumps.key?(name.to_sym)
+    @dump_definition_builders.key?(name.to_sym)
   end
 
   def self.storage=(value)
@@ -56,6 +60,6 @@ module DataKeeper
   end
 
   def self.clear_dumps!
-    @dumps = {}
+    @dump_definition_builders = {}
   end
 end

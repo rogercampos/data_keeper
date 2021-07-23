@@ -26,21 +26,19 @@ module DataKeeper
   end
 
   class DefinitionBuilder
-    attr_reader :tables, :raw_sqls, :on_after_load_block
-
-    def initialize(definition_block)
-      @tables = []
-      @raw_sqls = {}
-      instance_eval(&definition_block) if definition_block
-    end
-
-    def self.build(type, block)
-      @type = type
+    def initialize(type, definition_block)
       raise InvalidDumpType, "Invalid type! use :partial or :full" unless [:partial, :full].include?(type)
 
-      builder = new(block)
+      @type = type
+      @tables = []
+      @raw_sqls = {}
+      @definition_block = definition_block
+    end
 
-      Definition.new(type, builder.tables, builder.raw_sqls, builder.on_after_load_block)
+    def evaluate!
+      instance_eval(&@definition_block) if @definition_block
+
+      Definition.new(@type, @tables, @raw_sqls, @on_after_load_block)
     end
 
     def table(name)

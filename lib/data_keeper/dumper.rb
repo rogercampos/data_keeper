@@ -35,7 +35,7 @@ module DataKeeper
           output_path: file.path
         )
 
-        yield file, "#{filename}.dump"
+        yield File.open(file.path), "#{filename}.dump"
       end
     end
 
@@ -51,7 +51,7 @@ module DataKeeper
           end
         end
 
-        yield file, "#{filename}.tar.gz"
+        yield File.open(file.path), "#{filename}.tar.gz"
       end
     end
 

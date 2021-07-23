@@ -54,7 +54,7 @@ module DataKeeper
       inflate(@file.path) do |schema_path, tables_path, sql_files|
         pg_restore = Terrapin::CommandLine.new(
           'pg_restore',
-          "#{connection_args} -j 4 --no-owner --dbname #{database} #{schema_path} 2>/dev/null",
+          "#{connection_args} -j 4 --no-owner --dbname :database #{schema_path} 2>/dev/null",
           environment: psql_env
         )
 
@@ -66,7 +66,7 @@ module DataKeeper
 
         pg_restore = Terrapin::CommandLine.new(
           'pg_restore',
-          "#{connection_args} -c -j 4 --no-owner --dbname #{database} #{tables_path} 2>/dev/null",
+          "#{connection_args} --data-only -j 4 --no-owner --disable-triggers --dbname :database #{tables_path} 2>/dev/null",
           environment: psql_env
         )
 
@@ -88,7 +88,7 @@ module DataKeeper
             host: host,
             port: port,
             csv_path: csv_path,
-            command: "COPY #{table} FROM stdin DELIMITER ',' CSV HEADER"
+            command: "ALTER TABLE #{table} DISABLE TRIGGER all; COPY #{table} FROM stdin DELIMITER ',' CSV HEADER"
           )
         end
 

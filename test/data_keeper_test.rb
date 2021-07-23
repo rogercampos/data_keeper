@@ -1,11 +1,6 @@
 require "test_helper"
 
-class DataKeeperTest < Minitest::Test
-  def teardown
-    super
-    DataKeeper.clear_dumps!
-  end
-
+class DataKeeperTest < BaseTest
   def test_that_it_has_a_version_number
     assert ::DataKeeper::VERSION
   end
@@ -17,11 +12,13 @@ class DataKeeperTest < Minitest::Test
   end
 
   def test_asserts_on_duplicated_table_name
+    DataKeeper.define_dump(:name) do |d|
+      d.table "foobar"
+      d.table "foobar"
+    end
+
     assert_raises(DataKeeper::InvalidDumpDefinition) do
-      DataKeeper.define_dump(:name) do |d|
-        d.table "foobar"
-        d.table "foobar"
-      end
+      DataKeeper.create_dump!(:name)
     end
   end
 
