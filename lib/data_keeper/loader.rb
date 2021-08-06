@@ -52,6 +52,13 @@ module DataKeeper
 
     def load_partial_database!
       inflate(@file.path) do |schema_path, tables_path, sql_files|
+        cmd = Terrapin::CommandLine.new(
+          'psql',
+          "#{connection_args} -d :database -c :command",
+          environment: psql_env
+        )
+        cmd.run(database: database, host: host, port: port, command: "drop schema if exists public")
+
         pg_restore = Terrapin::CommandLine.new(
           'pg_restore',
           "#{connection_args} -j 4 --no-owner --dbname :database #{schema_path} 2>/dev/null",
