@@ -7,6 +7,9 @@ module DataKeeper
     def initialize(dump, file)
       @dump = dump
       @file = file
+      @psql_version = Terrapin::CommandLine.new('psql', '--version').run
+                                           .match(/[0-9]{1,}\.[0-9]{1,}/)
+                                           .to_s.to_f
     end
 
     def load!
@@ -24,12 +27,7 @@ module DataKeeper
     private
 
     def load_full_database!
-      cmd = Terrapin::CommandLine.new(
-        'psql',
-        "#{connection_args} -d :database -c :command",
-        environment: psql_env
-      )
-      cmd.run(database: database, host: host, port: port, command: "drop schema if exists public")
+      ensure_schema_compatibility!
 
       pg_restore = Terrapin::CommandLine.new(
         'pg_restore',
@@ -59,12 +57,7 @@ module DataKeeper
 
     def load_partial_database!
       inflate(@file.path) do |schema_path, tables_path, sql_files|
-        cmd = Terrapin::CommandLine.new(
-          'psql',
-          "#{connection_args} -d :database -c :command",
-          environment: psql_env
-        )
-        cmd.run(database: database, host: host, port: port, command: "drop schema if exists public")
+        ensure_schema_compatibility!
 
         pg_restore = Terrapin::CommandLine.new(
           'pg_restore',
@@ -107,6 +100,20 @@ module DataKeeper
         end
 
         Rake::Task['db:environment:set'].invoke
+      end
+    end
+
+    def ensure_schema_compatibility!
+      cmd = Terrapin::CommandLine.new(
+        'psql',
+        "#{connection_args} -d :database -c :command",
+        environment: psql_env
+      )
+
+      if @psql_version >= 11.0
+        cmd.run(database: database, host: host, port: port, command: "drop schema if exists public")
+      else
+        cmd.run(database: database, host: host, port: port, command: "create schema if not exists public")
       end
     end
 
