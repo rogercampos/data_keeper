@@ -1,10 +1,6 @@
 require "test_helper"
 
 class DataKeeperTest < BaseTest
-  def test_that_it_has_a_version_number
-    assert ::DataKeeper::VERSION
-  end
-
   def test_asserts_on_dump_type
     assert_raises(DataKeeper::InvalidDumpType) do
       DataKeeper.define_dump(:name, "invalid")
@@ -26,5 +22,18 @@ class DataKeeperTest < BaseTest
     assert_raises(DataKeeper::DumpDoesNotExist) do
       DataKeeper.create_dump!("missing")
     end
+  end
+
+  def test_partial_dump_creation_by_tables
+    DataKeeper.define_dump(:name) do |d|
+      d.table "users"
+    end
+
+    User.create! name: "Pepe"
+
+    DataKeeper.create_dump! :name
+
+    assert_equal 1, @storage.files.size
+    assert_equal :name, @storage.files.first[:dump_name]
   end
 end

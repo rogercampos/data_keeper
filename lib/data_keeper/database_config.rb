@@ -1,7 +1,7 @@
 module DataKeeper
   module DatabaseConfig
     def database_connection_config
-      Rails.configuration.database_configuration[Rails.env]
+      @database_connection_config ||= DataKeeper.database_config.call
     end
 
     def psql_env

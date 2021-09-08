@@ -20,27 +20,22 @@ module DataKeeper
       end
 
       if @dump.on_after_load_block
+        ActiveRecord::Base.establish_connection
         @dump.on_after_load_block.call
       end
     end
 
     private
 
-    def load_full_database!
-      ensure_schema_compatibility!
+    def log_redirect
+      if Terrapin::CommandLine.logger
+        ""
+      else
+        "  2>/dev/null"
+      end
+    end
 
-      pg_restore = Terrapin::CommandLine.new(
-        'pg_restore',
-        "#{connection_args} -j 4 --no-owner --dbname #{database} #{@file.path} 2>/dev/null",
-        environment: psql_env
-      )
-
-      pg_restore.run(
-        database: database,
-        host: host,
-        port: port
-      )
-
+    def set_ar_internal_metadata!
       cmd = Terrapin::CommandLine.new(
         'psql',
         "#{connection_args} -d :database -c :sql",
@@ -51,17 +46,40 @@ module DataKeeper
         database: database,
         host: host,
         port: port,
-        sql: "UPDATE ar_internal_metadata SET value = 'development'"
+        sql: "DELETE from ar_internal_metadata"
       )
+
+      cmd.run(
+        database: database,
+        host: host,
+        port: port,
+        sql: "INSERT into ar_internal_metadata (key, value, created_at, updated_at) VALUES ('environment', 'development', '2020-04-03 12:25:54.094209', '2020-04-03 12:25:54.094209')"
+      )
+    end
+
+    def load_full_database!
+      ensure_schema_compatibility!
+
+      pg_restore = Terrapin::CommandLine.new(
+        'pg_restore',
+        "#{connection_args} -j 4 --no-owner --dbname #{database} #{@file.path}#{log_redirect}",
+        environment: psql_env
+      )
+
+      pg_restore.run(
+        database: database,
+        host: host,
+        port: port
+      )
+
+      set_ar_internal_metadata!
     end
 
     def load_partial_database!
       inflate(@file.path) do |schema_path, tables_path, sql_files|
-        ensure_schema_compatibility!
-
         pg_restore = Terrapin::CommandLine.new(
           'pg_restore',
-          "#{connection_args} -j 4 --no-owner --dbname :database #{schema_path} 2>/dev/null",
+          "#{connection_args} -j 4 --no-owner -s --dbname :database #{schema_path}#{log_redirect}",
           environment: psql_env
         )
 
@@ -73,7 +91,7 @@ module DataKeeper
 
         pg_restore = Terrapin::CommandLine.new(
           'pg_restore',
-          "#{connection_args} --data-only -j 4 --no-owner --disable-triggers --dbname :database #{tables_path} 2>/dev/null",
+          "#{connection_args} --data-only -j 4 --no-owner --disable-triggers --dbname :database #{tables_path}#{log_redirect}",
           environment: psql_env
         )
 
@@ -99,7 +117,7 @@ module DataKeeper
           )
         end
 
-        Rake::Task['db:environment:set'].invoke
+        set_ar_internal_metadata!
       end
     end
 

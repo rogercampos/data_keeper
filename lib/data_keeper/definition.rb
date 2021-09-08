@@ -33,6 +33,7 @@ module DataKeeper
       @tables = []
       @raw_sqls = {}
       @definition_block = definition_block
+      @on_after_load_block = nil
     end
 
     def evaluate!
