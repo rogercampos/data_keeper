@@ -17,6 +17,7 @@ module DataKeeper
 
   @dump_definition_builders = {}
   @storage = nil
+  @database_config = -> { Rails.configuration.database_configuration[Rails.env] }
 
   def self.define_dump(name, type = :partial, &block)
     @dump_definition_builders[name.to_sym] = DefinitionBuilder.new(type, block)
@@ -57,6 +58,14 @@ module DataKeeper
 
   def self.storage=(value)
     @storage = value
+  end
+
+  def self.database_config=(value)
+    @database_config = value
+  end
+
+  def self.database_config
+    @database_config
   end
 
   def self.clear_dumps!
