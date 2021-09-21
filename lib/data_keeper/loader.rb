@@ -76,6 +76,8 @@ module DataKeeper
     end
 
     def load_partial_database!
+      ensure_schema_compatibility!
+
       inflate(@file.path) do |schema_path, tables_path, sql_files|
         pg_restore = Terrapin::CommandLine.new(
           'pg_restore',
