@@ -78,7 +78,7 @@ module DataKeeper
     def load_partial_database!
       ensure_schema_compatibility!
 
-      inflate(@file.path) do |schema_path, tables_path, sql_files|
+      inflate(@file.path) do |schema_path, tables_path, sql_files, sequences_path|
         pg_restore = Terrapin::CommandLine.new(
           'pg_restore',
           "#{connection_args} -j 4 --no-owner -s --dbname :database #{schema_path}#{log_redirect}",
@@ -119,6 +119,18 @@ module DataKeeper
           )
         end
 
+        pg_restore = Terrapin::CommandLine.new(
+          'pg_restore',
+          "#{connection_args} --data-only -j 4 --no-owner --disable-triggers --dbname :database #{sequences_path}#{log_redirect}",
+          environment: psql_env
+        )
+
+        pg_restore.run(
+          database: database,
+          host: host,
+          port: port
+        )
+
         set_ar_internal_metadata!
       end
     end
@@ -151,9 +163,8 @@ module DataKeeper
 
         validate("Schema file is missing") { !!schema_path } &&
           validate("Tables file is missing") { !!tables_path } &&
-          validate("Not all sql custom dumps are present") do
-            sql_dumps.size == @dump.sqls.keys.size
-          end
+          validate("Not all sql custom dumps are present") { sql_dumps.size == @dump.sqls.keys.size } &&
+          validate("Sequences file is missing") { !!sequences_path }
       end
 
       def schema_path
@@ -162,6 +173,10 @@ module DataKeeper
 
       def tables_path
         @tables_path ||= @paths.find { |x| File.basename(x) == "tables.dump" }
+      end
+
+      def sequences_path
+        @sequences_path ||= @paths.find { |x| File.basename(x) == "sequences.dump" }
       end
 
       def sql_dumps
@@ -193,7 +208,8 @@ module DataKeeper
           yield(
             inflated_files.schema_path,
             inflated_files.tables_path,
-            inflated_files.sql_dumps
+            inflated_files.sql_dumps,
+            inflated_files.sequences_path
           )
         end
       end
