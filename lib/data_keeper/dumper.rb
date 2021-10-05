@@ -48,6 +48,7 @@ module DataKeeper
             dump_schema(tar)
             dump_partial_tables(tar)
             dump_sqls(tar)
+            dump_sequences(tar)
           end
         end
 
@@ -136,8 +137,47 @@ module DataKeeper
       end
     end
 
+    def dump_sequences(tar)
+      Tempfile.create do |sequences_dump_file|
+        sequences_dump_file.binmode
+
+        sequences_args = all_sequences_to_export.map { |table| "-t #{table}" }.join(' ')
+        cmd = Terrapin::CommandLine.new(
+          'pg_dump',
+          "#{connection_args} -x -Fc :database #{sequences_args} > :output_path",
+          environment: psql_env
+        )
+
+        cmd.run(database: database, host: host, port: port, output_path: sequences_dump_file.path)
+
+        tar.add_file_simple("sequences.dump", 0644, File.size(sequences_dump_file.path)) do |io|
+          sequences_dump_file.reopen(sequences_dump_file)
+
+          while !sequences_dump_file.eof?
+            io.write(sequences_dump_file.read(2048))
+          end
+        end
+      end
+    end
+
     def filename
       "#{@dump_name}-#{Time.now.strftime("%Y%m%d-%H%M")}"
+    end
+
+    def all_sequences_to_export
+      cmd = Terrapin::CommandLine.new(
+        'psql',
+        "#{connection_args} -d :database -c :sql -A -R ',' -t",
+        environment: psql_env
+      )
+
+      sequences = cmd.run(
+        database: database,
+        host: host,
+        port: port,
+        sql: "SELECT sequencename from pg_sequences;"
+      )
+      sequences.split(',').map{|x| x.strip}
     end
   end
 end
