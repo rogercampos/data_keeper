@@ -35,4 +35,15 @@ namespace :data_keeper do
 
     DataKeeper.load_dump!(name, path)
   end
+
+  desc "Downloads the given dump raw file in the current directory"
+  task :download, [:name] => [:environment] do |_t, args|
+    name = args[:name]
+
+    if name.blank? || !DataKeeper.dump?(name)
+      raise "Please use this rake task giving a name of a configured dump. Ex: bin/rake data_keeper:pull[full]"
+    end
+
+    DataKeeper.download_dump!(name, ".")
+  end
 end

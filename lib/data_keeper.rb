@@ -44,6 +44,15 @@ module DataKeeper
     end
   end
 
+  def self.download_dump!(name, path)
+    raise DumpDoesNotExist unless dump?(name)
+    raise NoStorageDefined if @storage.nil?
+
+    @storage.retrieve(name) do |file, filename|
+      FileUtils.cp file.path, File.join(path, filename)
+    end
+  end
+
   def self.load_dump!(name, path)
     raise DumpDoesNotExist unless File.file?(path)
     raise NoStorageDefined if @storage.nil?

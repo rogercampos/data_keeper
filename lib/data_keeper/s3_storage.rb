@@ -78,7 +78,7 @@ module DataKeeper
     end
 
     def retrieve(dump_name)
-      prefix = "#{@store_dir}#{dump_name.to_s}"
+      prefix = "#{@store_dir}#{dump_name.to_s}/"
       last_dump = s3_client.list_contents(prefix).sort_by(&:last_modified).reverse.first
 
       Tempfile.create do |tmp_file|
@@ -86,7 +86,7 @@ module DataKeeper
         s3_client.stream_to_io(last_dump.key, tmp_file)
         tmp_file.flush
 
-        yield(tmp_file)
+        yield(tmp_file, File.basename(last_dump.key))
       end
     end
 

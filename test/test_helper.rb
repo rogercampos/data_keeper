@@ -23,7 +23,7 @@ class SimpleStorage
   end
 
   def retrieve(dump_name)
-    yield File.open File.join(@dir, dump_name)
+    yield File.open(File.join(@dir, dump_name)), dump_name
   end
 end
 

@@ -21,14 +21,15 @@ module DataKeeper
     def retrieve(dump_name)
       tempfile = Tempfile.new
       local_store_dir = @local_store_dir
+      last_dump_filename = nil
 
       on complete_host do
-        last_dump = capture :ls, "-1t #{File.join(local_store_dir, dump_name.to_s)} | head -n 1"
+        last_dump_filename = capture :ls, "-1t #{File.join(local_store_dir, dump_name.to_s)} | head -n 1"
 
-        download! File.join(local_store_dir, dump_name.to_s, last_dump), tempfile.path
+        download! File.join(local_store_dir, dump_name.to_s, last_dump_filename), tempfile.path
       end
 
-      yield(tempfile)
+      yield(tempfile, last_dump_filename)
     ensure
       tempfile.delete
     end
