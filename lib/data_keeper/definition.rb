@@ -37,9 +37,12 @@ module DataKeeper
     end
 
     def evaluate!
-      instance_eval(&@definition_block) if @definition_block
+      @definition ||=
+        begin
+          instance_eval(&@definition_block) if @definition_block
 
-      Definition.new(@type, @tables, @raw_sqls, @on_after_load_block)
+          Definition.new(@type, @tables, @raw_sqls, @on_after_load_block)
+        end
     end
 
     def table(name)
