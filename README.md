@@ -110,6 +110,29 @@ in your current database. It will give you an error if you try to run this in a 
 Note when using raw sql, your statement is expected to return all columns for the configured table, in the default
 order (`select *`). This uses pg's COPY from/to for the full table internally. 
 
+## Docker
+
+If you're using pg under docker, you can configure also DataKeeper with the docker pg settings and then this gem
+will use the binaries under that docker container (`psql`, `pg_restore`, etc.).
+
+Since then the commands to execute are ran from within the docker instance, the port will be different
+as the one the rails app uses, so you'll need to configure what's the pg access from the docker container, use:
+
+```
+DataKeeper.docker_config = {
+  instance_name: "pg_my_app",
+  pg_host: "localhost",
+  pg_port: "5432",
+  pg_user: "myapp",
+  pg_password: "myapp"
+}
+```
+
+If the host, or user and password are the same as the ones used from the rails app, you can ignore them.
+If you configure this `docker_config` hash, then data keeper will try to use docker via `docker exec` to 
+run the pg commands.
+
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

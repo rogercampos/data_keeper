@@ -7,9 +7,9 @@ module DataKeeper
     def initialize(dump, file)
       @dump = dump
       @file = file
-      @psql_version = Terrapin::CommandLine.new('psql', '--version').run
-                                           .match(/[0-9]{1,}\.[0-9]{1,}/)
-                                           .to_s.to_f
+      @psql_version = build_terrapin_command('psql', '--version').run
+                                                                 .match(/[0-9]{1,}\.[0-9]{1,}/)
+                                                                 .to_s.to_f
     end
 
     def load!
@@ -35,12 +35,23 @@ module DataKeeper
       end
     end
 
+    def build_terrapin_command(binary, args, docker_args = args)
+      if DataKeeper.docker_config.any?
+        Terrapin::CommandLine.new(
+          'docker',
+          "exec #{docker_env_params} -i #{DataKeeper.docker_config[:instance_name]} #{binary} #{docker_args}"
+        )
+      else
+        Terrapin::CommandLine.new(
+          binary,
+          args,
+          environment: psql_env
+        )
+      end
+    end
+
     def set_ar_internal_metadata!
-      cmd = Terrapin::CommandLine.new(
-        'psql',
-        "#{connection_args} -d :database -c :sql",
-        environment: psql_env
-      )
+      cmd = build_terrapin_command("psql", "#{connection_args} -d :database -c :sql")
 
       cmd.run(
         database: database,
@@ -58,12 +69,10 @@ module DataKeeper
     end
 
     def load_full_database!
-      ensure_schema_compatibility!
-
-      pg_restore = Terrapin::CommandLine.new(
-        'pg_restore',
+      pg_restore = build_terrapin_command(
+        "pg_restore",
         "#{connection_args} -j 4 --no-owner --dbname #{database} #{@file.path}#{log_redirect}",
-        environment: psql_env
+        "#{connection_args} --no-owner --dbname #{database} < #{@file.path}#{log_redirect}"
       )
 
       pg_restore.run(
@@ -79,10 +88,10 @@ module DataKeeper
       ensure_schema_compatibility!
 
       inflate(@file.path) do |schema_path, tables_path, sql_files, sequences_path|
-        pg_restore = Terrapin::CommandLine.new(
-          'pg_restore',
+        pg_restore = build_terrapin_command(
+          "pg_restore",
           "#{connection_args} -j 4 --no-owner -s --dbname :database #{schema_path}#{log_redirect}",
-          environment: psql_env
+          "#{connection_args} --no-owner -s --dbname :database < #{schema_path}#{log_redirect}"
         )
 
         pg_restore.run(
@@ -91,10 +100,10 @@ module DataKeeper
           port: port
         )
 
-        pg_restore = Terrapin::CommandLine.new(
-          'pg_restore',
+        pg_restore = build_terrapin_command(
+          "pg_restore",
           "#{connection_args} --data-only -j 4 --no-owner --disable-triggers --dbname :database #{tables_path}#{log_redirect}",
-          environment: psql_env
+          "#{connection_args} --data-only --no-owner --disable-triggers --dbname :database < #{tables_path}#{log_redirect}"
         )
 
         pg_restore.run(
@@ -104,11 +113,7 @@ module DataKeeper
         )
 
         sql_files.each do |table, csv_path|
-          cmd = Terrapin::CommandLine.new(
-            'psql',
-            "#{connection_args} -d :database -c :command < :csv_path",
-            environment: psql_env
-          )
+          cmd = build_terrapin_command("psql", "#{connection_args} -d :database -c :command < :csv_path")
 
           cmd.run(
             database: database,
@@ -119,10 +124,10 @@ module DataKeeper
           )
         end
 
-        pg_restore = Terrapin::CommandLine.new(
-          'pg_restore',
+        pg_restore = build_terrapin_command(
+          "pg_restore",
           "#{connection_args} --data-only -j 4 --no-owner --disable-triggers --dbname :database #{sequences_path}#{log_redirect}",
-          environment: psql_env
+          "#{connection_args} --data-only --no-owner --disable-triggers --dbname :database < #{sequences_path}#{log_redirect}"
         )
 
         pg_restore.run(
@@ -136,11 +141,7 @@ module DataKeeper
     end
 
     def ensure_schema_compatibility!
-      cmd = Terrapin::CommandLine.new(
-        'psql',
-        "#{connection_args} -d :database -c :command",
-        environment: psql_env
-      )
+      cmd = build_terrapin_command("psql", "#{connection_args} -d :database -c :command")
 
       if @psql_version >= 11.0
         cmd.run(database: database, host: host, port: port, command: "drop schema if exists public")
@@ -207,9 +208,9 @@ module DataKeeper
 
           yield(
             inflated_files.schema_path,
-            inflated_files.tables_path,
-            inflated_files.sql_dumps,
-            inflated_files.sequences_path
+              inflated_files.tables_path,
+              inflated_files.sql_dumps,
+              inflated_files.sequences_path
           )
         end
       end

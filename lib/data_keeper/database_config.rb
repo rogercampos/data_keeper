@@ -5,13 +5,27 @@ module DataKeeper
     end
 
     def psql_env
-      env = { 'PGUSER' => database_connection_config['username'] }
-      env['PGPASSWORD'] = database_connection_config['password'] if database_connection_config['password']
+      env = { 'PGUSER' => username }
+      env['PGPASSWORD'] = password if password
       env
     end
 
+    def docker_env_params
+      psql_env.map do |k, v|
+        "-e #{k}=#{v}"
+      end.join(" ")
+    end
+
+    def username
+      DataKeeper.docker_config[:pg_user] || database_connection_config['username']
+    end
+
+    def password
+      DataKeeper.docker_config[:pg_password] || database_connection_config['password']
+    end
+
     def host
-      database_connection_config['host'] || '127.0.0.1'
+      DataKeeper.docker_config[:pg_host] || database_connection_config['host'] || '127.0.0.1'
     end
 
     def database
@@ -19,12 +33,12 @@ module DataKeeper
     end
 
     def port
-      database_connection_config['port']
+      DataKeeper.docker_config[:pg_port] || database_connection_config['port'] || '5432'
     end
 
     def connection_args
       connection_opts = '--host=:host'
-      connection_opts += ' --port=:port' if database_connection_config['port']
+      connection_opts += ' --port=:port' if port
       connection_opts
     end
   end
