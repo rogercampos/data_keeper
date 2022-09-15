@@ -24,8 +24,8 @@ module DataKeeper
       Tempfile.create do |file|
         cmd = Terrapin::CommandLine.new(
           'pg_dump',
-          "#{connection_args} -x -Fc :database > :output_path",
-          environment: psql_env
+          "#{dumper_connection_args} -x -Fc :database > :output_path",
+          environment: dumper_psql_env
         )
 
         cmd.run(
@@ -61,8 +61,8 @@ module DataKeeper
         Tempfile.create do |table_file|
           cmd = Terrapin::CommandLine.new(
             'psql',
-            "#{connection_args} -d :database -c :command > #{table_file.path}",
-            environment: psql_env
+            "#{dumper_connection_args} -d :database -c :command > #{table_file.path}",
+            environment: dumper_psql_env
           )
 
           cmd.run(
@@ -89,8 +89,8 @@ module DataKeeper
         table_args = @definition.full_tables_to_export.map { |table| "-t #{table}" }.join(' ')
         cmd = Terrapin::CommandLine.new(
           'pg_dump',
-          "#{connection_args} -x -Fc :database #{table_args} > :output_path",
-          environment: psql_env
+          "#{dumper_connection_args} -x -Fc :database #{table_args} > :output_path",
+          environment: dumper_psql_env
         )
 
         cmd.run(
@@ -116,8 +116,8 @@ module DataKeeper
 
         cmd = Terrapin::CommandLine.new(
           'pg_dump',
-          "#{connection_args} -x --schema-only -Fc :database > :output_path",
-          environment: psql_env
+          "#{dumper_connection_args} -x --schema-only -Fc :database > :output_path",
+          environment: dumper_psql_env
         )
 
         cmd.run(
@@ -144,8 +144,8 @@ module DataKeeper
         sequences_args = all_sequences_to_export.map { |table| "-t #{table}" }.join(' ')
         cmd = Terrapin::CommandLine.new(
           'pg_dump',
-          "#{connection_args} -x -Fc :database #{sequences_args} > :output_path",
-          environment: psql_env
+          "#{dumper_connection_args} -x -Fc :database #{sequences_args} > :output_path",
+          environment: dumper_psql_env
         )
 
         cmd.run(database: database, host: host, port: port, output_path: sequences_dump_file.path)
@@ -167,8 +167,8 @@ module DataKeeper
     def all_sequences_to_export
       cmd = Terrapin::CommandLine.new(
         'psql',
-        "#{connection_args} -d :database -c :sql -A -R ',' -t",
-        environment: psql_env
+        "#{dumper_connection_args} -d :database -c :sql -A -R ',' -t",
+        environment: dumper_psql_env
       )
 
       sequences = cmd.run(
